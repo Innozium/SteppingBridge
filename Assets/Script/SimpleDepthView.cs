@@ -4,6 +4,14 @@ using System;
 
 public class SimpleDepthView : MonoBehaviour
 {
+    //Kinect V2 FPS 30FPS *3(Color) 30FPS(Depth) , 심도 취득 범위 0.5 ~ 8.0M 
+
+
+    // DepthMapRange 500 ~ 1500CM 임의 설정.. (차후에 발쪽 인식 범위로 할 예정)
+    int DEPTHMAP_UNIT_CM_MIN = 500;
+    int DEPTHMAP_UNIT_CM_MAX = 1500;
+
+
     public GameObject depthSourceManager;
     private DepthSourceManager depthSourceManagerScript;
 
@@ -12,6 +20,8 @@ public class SimpleDepthView : MonoBehaviour
     FrameDescription depthFrameDesc;
 
     public float scale = 1.0f;
+    public float f_DepthMapWidth; // 512
+    public float f_DepthMapHeight; // 424 
 
     void Start()
     {
@@ -24,6 +34,9 @@ public class SimpleDepthView : MonoBehaviour
         // allocate.
         depthBitmapBuffer = new byte[depthFrameDesc.LengthInPixels * 4];
         texture = new Texture2D(depthFrameDesc.Width, depthFrameDesc.Height, TextureFormat.BGRA32, false);
+        f_DepthMapWidth = depthFrameDesc.Width;
+        f_DepthMapHeight = depthFrameDesc.Height;
+
 
         // arrange size of gameObject to be drawn
         gameObject.transform.localScale = new Vector3(scale * depthFrameDesc.Width / depthFrameDesc.Height, scale, 1.0f);
@@ -35,9 +48,6 @@ public class SimpleDepthView : MonoBehaviour
         this.GetComponent<Renderer>().material.mainTexture = texture;
     }
 
-    // DepthMapRange 500 ~ 1500CM Recognition
-    int DEPTHMAP_UNIT_CM_MIN = 500;
-    int DEPTHMAP_UNIT_CM_MAX = 1500;
     void updateTexture()
     {
         // get new depth data from DepthSourceManager.
