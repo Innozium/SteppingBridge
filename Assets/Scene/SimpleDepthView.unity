@@ -282,7 +282,7 @@ Transform:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 1754055121}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -10}
+  m_LocalPosition: {x: 0, y: 0, z: -20}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
@@ -318,8 +318,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2e443ab59012d4a46a71396c071c9ffa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  DEPTHMAP_UNIT_CM_MIN: 500
+  DEPTHMAP_UNIT_CM_MAX: 1500
   depthSourceManager: {fileID: 1181127588}
-  scale: 10
+  scale: 20
+  f_DepthMapWidth: 0
+  f_DepthMapHeight: 0
 --- !u!23 &2025296939
 MeshRenderer:
   m_ObjectHideFlags: 0
