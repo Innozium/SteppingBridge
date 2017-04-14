@@ -74,12 +74,6 @@ public class SimpleDepthView : MonoBehaviour
             }
         }
 
-
-               
-     
-
-      
-
         // make texture from byte array
         texture.LoadRawTextureData(depthBitmapBuffer);
         texture.Apply();
@@ -99,6 +93,7 @@ public class SimpleDepthView : MonoBehaviour
 
         }
     }
+
 
     void BottomCheck()
     {
@@ -140,7 +135,9 @@ public class SimpleDepthView : MonoBehaviour
         DEPTHMAP_UNIT_CM_MIN = DEPTHMAP_UNIT_CM_MAX - 100;
         DEPTHMAP_UNIT_CM_MAX -= 50;
         //print(count);
+
     }
+
 
 }
 
