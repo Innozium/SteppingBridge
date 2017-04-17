@@ -45,7 +45,7 @@ public class SimpleDepthView : MonoBehaviour
         gameObject.transform.localScale = new Vector3(scale * depthFrameDesc.Width / depthFrameDesc.Height, scale, 1.0f);
 
 
-        StartCoroutine(CheckTest());
+        StartCoroutine(CheckTest2());
     }
 
     void Update()
@@ -81,8 +81,11 @@ public class SimpleDepthView : MonoBehaviour
 
     IEnumerator CheckTest()
     {
+        yield return new WaitForFixedUpdate();
+
         int count = 0;
-        while(true)
+
+        while (true)
         {
             BottomCheck();
 
@@ -94,6 +97,143 @@ public class SimpleDepthView : MonoBehaviour
         }
     }
 
+
+    IEnumerator CheckTest2()
+    {
+        // get new depth data from DepthSourceManager.
+        ushort[] rawdata = depthSourceManagerScript.GetData();
+
+        int count = 0;
+        ushort check1Max = 0;
+        ushort check2Max = 0;
+        List<ushort> check3 = new List<ushort>();
+        List<ushort> check4 = new List<ushort>();
+
+        double sum = 0;
+        double average = 0;
+        double average2 = 0;
+        double average3 = 0;
+
+       
+
+        yield return new WaitForSeconds(5.0f);
+
+        while (true)
+        {
+            DEPTHMAP_UNIT_CM_MAX = 4500;
+
+            rawdata = depthSourceManagerScript.GetData();
+
+            for (int i = 0; i < rawdata.Length; i += 2)
+            {
+                if (count == 1)
+                {
+                    if (check1Max < rawdata[i] && rawdata[i] < DEPTHMAP_UNIT_CM_MAX)
+                    {
+                        check1Max = rawdata[i];
+                    }
+                }
+                else if (count == 2)
+                {
+                    if (check2Max < rawdata[i] && rawdata[i] < DEPTHMAP_UNIT_CM_MAX)
+                    {
+                        check2Max = rawdata[i];
+                    }
+                }
+               
+            }
+
+            yield return new WaitForFixedUpdate();
+
+            count++;
+
+            if (count > 2) break;
+
+        }
+
+        sum = (ushort)(check1Max + check2Max);
+        average = (ushort)(sum / 2);
+
+        do
+        {
+            yield return new WaitForFixedUpdate();
+
+            rawdata = depthSourceManagerScript.GetData();
+
+            ushort avgMin = (ushort)Mathf.Clamp((ushort)average - 500, 500, 4500);
+            ushort avgMax = (ushort)Mathf.Clamp((ushort)average + 500, 500, 4500);
+
+            print(avgMin);
+            print(avgMax);
+
+            for (int i = 0; i < rawdata.Length; i += 2)
+            {
+                if ((avgMin < rawdata[i] && avgMax > rawdata[i]) && rawdata[i] < DEPTHMAP_UNIT_CM_MAX)
+                {
+                    check3.Add(rawdata[i]);
+                }
+            }
+
+        } while (false);
+
+        sum = 0;
+        sum += (average);
+        for (int i = 0; i < check3.Count; i++)
+        {
+            sum += (check3[i]);
+        }
+        average2 = (sum / (check3.Count + 1));
+        print(sum);
+        print(check3.Count);
+
+        do
+        {
+            yield return new WaitForFixedUpdate();
+
+            rawdata = depthSourceManagerScript.GetData();
+
+            ushort avgMin = (ushort)Mathf.Clamp((ushort)average2 - 500, 500, 4500);
+            ushort avgMax = (ushort)Mathf.Clamp((ushort)average2 + 500, 500, 4500);
+
+            print(avgMin);
+            print(avgMax);
+
+            for (int i = 0; i < rawdata.Length; i += 2)
+            {
+                if ((avgMin < rawdata[i] && avgMax > rawdata[i]) && rawdata[i] < DEPTHMAP_UNIT_CM_MAX)
+                {
+                    check4.Add(rawdata[i]);
+                }
+            }
+
+        } while (false);
+
+
+        sum = 0;
+        sum += (average2);
+        for (int i = 0; i < check4.Count; i++)
+        {
+            sum += (check4[i]);
+        }
+        average3 = (sum / (check4.Count + 1));
+        print(sum);
+        print(check4.Count);
+
+
+
+
+        print(check1Max);
+        print(check2Max);
+        print(average);
+        print(average2);
+        print(average3);
+
+
+
+        DEPTHMAP_UNIT_CM_MAX = (ushort)average3;
+        DEPTHMAP_UNIT_CM_MIN = DEPTHMAP_UNIT_CM_MAX - 100;
+        //DEPTHMAP_UNIT_CM_MAX -= 50;
+    }
 
     void BottomCheck()
     {
