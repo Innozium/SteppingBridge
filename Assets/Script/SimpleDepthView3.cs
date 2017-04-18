@@ -6,7 +6,7 @@ using System.Collections.Generic;
 
 using OpenCVForUnity;
 
-public class SimpleDepthView1 : MonoBehaviour
+public class SimpleDepthView3 : MonoBehaviour
 {
     //Kinect V2 FPS 30FPS *3(Color) 30FPS(Depth) , 심도 취득 범위 0.5 ~ 8.0M 
     
@@ -101,25 +101,36 @@ public class SimpleDepthView1 : MonoBehaviour
         Imgproc.Canny(grayMat, grayMat, 50, 200);
 
         //2진화
-        //Mat thresholdMat = new Mat();
-        //Imgproc.threshold(grayMat, thresholdMat, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+        Mat thresholdMat = new Mat();
+        Imgproc.threshold(grayMat, thresholdMat, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+
+        Mat dilated = new Mat();
+
+        Mat kernel = new Mat(7, 7, CvType.CV_8U, new Scalar(1));
 
         //Mat eroded = new Mat();
-        //Mat kernelT = new Mat();
-        //Imgproc.erode(thresholdMat, eroded, kernelT, new Point(-1, -1), 3);
 
-        //Mat kernel = new Mat(7, 7, CvType.CV_8U, new Scalar(1));
+        //Imgproc.erode(thresholdMat, dilated, kernel, new Point(0, 0), 3);
 
-        //Mat dilated = new Mat();
 
-        //Imgproc.dilate(grayMat, dilated, kernel);
+        Imgproc.dilate(grayMat, dilated, kernel);
 
-        
+        Imgproc.dilate(dilated, dilated, kernel);
+
+        //Imgproc.dilate(dilated, dilated, kernel);
+
+        //Imgproc.dilate(dilated, dilated, kernel);
+
+     
+
 
 
         //Imgproc.dilate(thresholdMat, dilated, kernel);
 
         //Imgproc.dilate(dilated, dilated, kernel);
+
+        //Imgproc.threshold(dilated, dilated, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+
 
         // Imgproc.dilate(dilated, dilated, kernel);
 
@@ -127,7 +138,7 @@ public class SimpleDepthView1 : MonoBehaviour
         Mat hierarchy = new Mat();
         List<MatOfPoint> contours = new List<MatOfPoint>();
         //RETR_EXTERNAL
-        Imgproc.findContours(grayMat, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+        Imgproc.findContours(dilated, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
 
         for (int i = 0; i < contours.Count; i++)
         {
@@ -136,7 +147,7 @@ public class SimpleDepthView1 : MonoBehaviour
             double contourArea = Imgproc.contourArea(contourMat);
             //print(Imgproc.contourArea(contourMat));
             if (contourArea > footMinArea
-                && contourArea < footMaxArea
+                //&& contourArea < footMaxArea
                 )
             {
                 Scalar center = Core.mean(contourMat);
@@ -147,7 +158,7 @@ public class SimpleDepthView1 : MonoBehaviour
                 touchPoints.Add(footPoint);
             }
             Scalar color = new Scalar(255, 0, 0);
-            Imgproc.drawContours(grayMat, contours, i, color, 7);
+            Imgproc.drawContours(dilated, contours, i, color, 7);
         }
 
         //for(int i = 0; i< touchPoints.Count; i++)
@@ -160,7 +171,7 @@ public class SimpleDepthView1 : MonoBehaviour
         for (int i = 0; i < touchPoints.Count; i++)
         { // touch points
             Scalar color = new Scalar(255, 0, 0);
-            Imgproc.circle(grayMat, touchPoints[i], 50, color, 7);
+            Imgproc.circle(dilated, touchPoints[i], 50, color, 7);
             //int cvtPixelToDepthX = Convert.ToInt32((f_DepthMapWidth * touchPoints[i].x) / Screen.width * 0.1);
             //int cvtPixelToDepthY = Convert.ToInt32((f_DepthMapHeight * touchPoints[i].y) / Screen.height * 0.1);
 
@@ -174,7 +185,7 @@ public class SimpleDepthView1 : MonoBehaviour
 
 
 
-        Utils.matToTexture2D(grayMat, texture);
+        Utils.matToTexture2D(dilated, texture);
         texture.Apply();
         
     }
