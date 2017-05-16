@@ -40,7 +40,7 @@ public class SimpleInfraredView : MonoBehaviour
     //최종적으로 윤곽을 적용할 텍스처(확인용으로만 사용된다.)
     private Texture2D resultTexture;
 
-    private Renderer renderer;
+    private Renderer myRenderer;
 
     public CircularBuffer<Mat> matBuffer;
     public const int MAT_BUFFER_SIZE = 10;//합영상 프레임 더하는 횟수 ex :  30프레임
@@ -157,7 +157,7 @@ public class SimpleInfraredView : MonoBehaviour
         InfraredMapWidth = frameDesc.Width;
 
         //Renderer를 담아둔다.
-        renderer = gameObject.GetComponent<Renderer>();
+        myRenderer = gameObject.GetComponent<Renderer>();
 
         //사용할 Mat을 용도에 맞게 초기화 시켜둔다.
         prevMat = new Mat(InfraredMapHiehgt, InfraredMapWidth, CvType.CV_8UC1);//1차원 행렬 선언
