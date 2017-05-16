@@ -31,6 +31,7 @@ public class DepthSourceManager : MonoBehaviour
             var frame = _Reader.AcquireLatestFrame();
             if (frame != null)
             {
+                //Debug.Log("depth not null");
                 frame.CopyFrameDataToArray(_Data);
                 frame.Dispose();
                 frame = null;

@@ -8,12 +8,7 @@ using System.Collections.Generic;
 using OpenCVForUnity;
 // Declare the generic class.
 
-//윤곽선이 잡힌 포인트에 생성될 오브젝트의 정보 담을 클래스.
-public class ParticleObjClass
-{
-    public GameObject obj; //오브젝트
-    public float lifeTime; //살아있을 시간
-}
+
 
 public class SimpleDepthView : MonoBehaviour
 {
@@ -30,24 +25,41 @@ public class SimpleDepthView : MonoBehaviour
     private Renderer renderer;
 
     public CircularBuffer<Mat> matBuffer;
-    public const int MAT_BUFFER_SIZE = 15;//합영상 프레임 더하는 횟수 ex :  30프레임
-    int sumCount;
+    public CircularBuffer<Mat> matBuffer2;
+    public CircularBuffer<Mat> matBuffer3;
+
+    public const int MAT_BUFFER_SIZE = 5;//합영상 프레임 더하는 횟수 ex :  30프레임
+    int sumCount1;
+    int sumCount2;
+    int sumCount3;
+
     Mat sumMat;
     Mat avgMat;
     Mat prevMat;
     Mat convert32Mat;
     Mat convert8Mat;
 
+    Mat resultMat1;
+    Mat resultMat2;
+    Mat resultMat3;
+
+
     [Range(500, 4500)]
     public int DEPTHMAP_UNIT_CM_MIN = 1000;
-    [Range(500, 4500)]
-    public int DEPTHMAP_UNIT_CM_MAX = 1500;
+    [Range(500, 8000)]
+    public int DEPTHMAP_UNIT_CM_MAX = 8000;
 
     public GameObject depthSourceManager;
     private DepthSourceManager depthSourceManagerScript;
 
     Texture2D texture;
+
+    public GameObject subObj;
+    public Texture2D subTexture;
+
     byte[] depthBitmapBuffer;
+    byte[] depthBitmapBuffer2;
+    byte[] depthBitmapBuffer3;
     FrameDescription depthFrameDesc;
 
     public float scale = 1.0f;
@@ -69,8 +81,11 @@ public class SimpleDepthView : MonoBehaviour
     public bool is_test = false;
     public bool is_abs = false;
 
+    [Range(300, 8000)]
+    public int v = 300;
+
     #region ParticleObj부분
-    public void ParticleObjInit()
+    private void ParticleObjInit()
     {
         //만들어줄 프리팹을 가지고 있다면.
         if (particleObj != null)
@@ -148,13 +163,19 @@ public class SimpleDepthView : MonoBehaviour
 
         // allocate.
         depthBitmapBuffer = new byte[depthFrameDesc.LengthInPixels * 4];
+        depthBitmapBuffer2 = new byte[depthFrameDesc.LengthInPixels * 4];
+        depthBitmapBuffer3 = new byte[depthFrameDesc.LengthInPixels * 4];
+
         texture = new Texture2D(depthFrameDesc.Width, depthFrameDesc.Height, TextureFormat.BGRA32, false);
+        subTexture = new Texture2D(depthFrameDesc.Width, depthFrameDesc.Height, TextureFormat.BGRA32, false);
 
         f_DepthMapWidth = depthFrameDesc.Width;
         f_DepthMapHeight = depthFrameDesc.Height;
 
         // arrange size of gameObject to be drawn
         gameObject.transform.localScale = new Vector3(scale * depthFrameDesc.Width / depthFrameDesc.Height, scale, 1.0f);
+        subObj.transform.localScale = new Vector3(scale * depthFrameDesc.Width / depthFrameDesc.Height, scale, 1.0f);
+
 
         prevMat = new Mat(texture.height, texture.width, CvType.CV_8UC1);//1차원 행렬 선언
 
@@ -162,6 +183,11 @@ public class SimpleDepthView : MonoBehaviour
         avgMat = new Mat(texture.height, texture.width, CvType.CV_32FC1);//1차원 행렬 선언
         convert32Mat = new Mat(texture.height, texture.width, CvType.CV_32FC1);
         convert8Mat = new Mat(texture.height, texture.width, CvType.CV_8UC1);
+
+        resultMat1 = new Mat(texture.height, texture.width, CvType.CV_8UC1);
+        resultMat2 = new Mat(texture.height, texture.width, CvType.CV_8UC1);
+        resultMat3 = new Mat(texture.height, texture.width, CvType.CV_8UC1);
+
         //평균을 내기위해 avgMat에 값을 넣어준다.
         double data = MAT_BUFFER_SIZE - 1;
         for (int i = 0; i < avgMat.height(); i++)
@@ -174,7 +200,13 @@ public class SimpleDepthView : MonoBehaviour
 
         //합영상을 위한 버퍼
         matBuffer = new CircularBuffer<Mat>(MAT_BUFFER_SIZE);
-        sumCount = 0;
+        matBuffer2 = new CircularBuffer<Mat>(MAT_BUFFER_SIZE);
+        matBuffer3 = new CircularBuffer<Mat>(MAT_BUFFER_SIZE);
+
+        sumCount1 = 0;
+        sumCount2 = 0;
+        sumCount3 = 0;
+
 
         //파티클 오브젝트를 생성한다.
         ParticleObjInit();
@@ -184,35 +216,11 @@ public class SimpleDepthView : MonoBehaviour
     {
         updateTexture();
         renderer.material.mainTexture = texture;
+        subObj.GetComponent<Renderer>().material.mainTexture = subTexture;
     }
 
-    void updateTexture()
+    public Mat avgMatReturn(Texture2D texture, CircularBuffer<Mat> matBuffer, ref int sumCount)
     {
-        // get new depth data from DepthSourceManager.
-        ushort[] rawdata = depthSourceManagerScript.GetData();
-
-        for (int r = 0; r < f_DepthMapHeight; r += 1) //위에서 아래로
-        {
-            for (int c = 0; c < f_DepthMapWidth; c += 1)//오른쪽에서 왼쪽으로 
-            {
-
-                ushort value = rawdata[r * f_DepthMapWidth + c];
-                depthBitmapBuffer[(r * f_DepthMapWidth + c) * 4 + 1] =
-                    (byte)((DEPTHMAP_UNIT_CM_MIN < value) && (value < DEPTHMAP_UNIT_CM_MAX) ? value : 0); // G // COMMON
-                depthBitmapBuffer[(r * f_DepthMapWidth + c) * 4 + 3] =
-                    (byte)((DEPTHMAP_UNIT_CM_MIN < value) && (value < DEPTHMAP_UNIT_CM_MAX) ? value : 0); // G // COMMON
-
-            }
-        }
-
-        // make texture from byte array
-        texture.LoadRawTextureData(depthBitmapBuffer);
-        texture.Apply();
-
-        /*
-         *  noise delete!
-         */
-
         Mat imgMat = new Mat(texture.height, texture.width, CvType.CV_8UC3);//img행렬 선언
 
         Mat dstMat = new Mat(texture.height, texture.width, CvType.CV_8UC1);//1차원 행렬 선언
@@ -236,6 +244,10 @@ public class SimpleDepthView : MonoBehaviour
         dstMat.convertTo(convert32Mat, CvType.CV_32FC1);
 
         matBuffer.Push(convert32Mat);
+
+        //print(sumCount);
+        //print("buffer" + matBuffer.Count);
+
         if (sumCount < MAT_BUFFER_SIZE)//MAX_BUFFER_SIZE횟수만큼 전까지는 평균값 구하지 않음
         {
             sumCount += 1;
@@ -257,43 +269,110 @@ public class SimpleDepthView : MonoBehaviour
 
         sumMat.convertTo(convert8Mat, CvType.CV_8UC1);
 
-        //if(is_test)
-        //{
-        //    Imgproc.threshold(convert8Mat, convert8Mat, 25, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
-        //    Imgproc.threshold(nowMat, nowMat, 25, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
-        //}
-
         Mat resultMat = new Mat(texture.height, texture.width, CvType.CV_8UC1);//1차원 행렬 선언
 
         Core.subtract(convert8Mat, nowMat, resultMat);
-        //Core.subtract(nowMat, convert8Mat, nowMat);
-        //Core.subtract(convert8Mat, nowMat, convert8Mat);
-        //if (is_abs)
-        //{
-        //    Core.absdiff(convert8Mat, nowMat, convert8Mat);
-        //}
-        //else
-        //{
-        //    Core.subtract(convert8Mat, nowMat, convert8Mat);
-        //}
-        print("diff(convert8) " + convert8Mat.get(150, 150)[0]);
-        print("diff(now) " + nowMat.get(150, 150)[0]);
-        print("diff(resultMat) " + resultMat.get(150, 150)[0]);
 
-        Imgproc.threshold(resultMat, resultMat, 25, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+        return resultMat;
+    }
 
-        Imgproc.erode(resultMat, resultMat, kernel);//병목
-        Imgproc.dilate(resultMat, resultMat, kernel);//팽창. 
-        Imgproc.dilate(resultMat, resultMat, kernel);//팽창. 
-        Imgproc.dilate(resultMat, resultMat, kernel);//팽창. 
+    void updateTexture()
+    {
+        resultMat1 = Mat.zeros(texture.height, texture.width, CvType.CV_8UC1);
+        resultMat2 = Mat.zeros(texture.height, texture.width, CvType.CV_8UC1);
+        resultMat3 = Mat.zeros(texture.height, texture.width, CvType.CV_8UC1);
+
+        // get new depth data from DepthSourceManager.
+        ushort[] rawdata = depthSourceManagerScript.GetData();
+
+        v = 2500;
+
+        for (int r = 0; r < f_DepthMapHeight; r += 1) //위에서 아래로
+        {
+            for (int c = 0; c < f_DepthMapWidth; c += 1)//오른쪽에서 왼쪽으로 
+            {
+                //value / (v / 256)
+
+                ushort value = rawdata[r * f_DepthMapWidth + c];
+                depthBitmapBuffer[(r * f_DepthMapWidth + c) * 4 + 1] =
+                    (byte)((500 < value) && (value < 2500) ? 255 - (256 * value / (v)) : 0); // G // COMMON
+                depthBitmapBuffer[(r * f_DepthMapWidth + c) * 4 + 3] =
+                    (byte)((500 < value) && (value < 2500) ? 255 - (256 * value / (v)) : 0); // A // COMMON
+            }
+        }
+
+        // make texture from byte array
+        texture.LoadRawTextureData(depthBitmapBuffer);
+        texture.Apply();
+        
+        resultMat1 = avgMatReturn(texture, matBuffer, ref sumCount1);
+
+        v = 3200;
+
+        for (int r = 0; r < f_DepthMapHeight; r += 1) //위에서 아래로
+        {
+            for (int c = 0; c < f_DepthMapWidth; c += 1)//오른쪽에서 왼쪽으로 
+            {
+                ushort value = rawdata[r * f_DepthMapWidth + c];
+                depthBitmapBuffer[(r * f_DepthMapWidth + c) * 4 + 1] =
+                    (byte)((2500 < value) && (value < 3200) ? 255 - (256 * value / (v)) : 0); // G // COMMON
+                depthBitmapBuffer[(r * f_DepthMapWidth + c) * 4 + 3] =
+                    (byte)((2500 < value) && (value < 3200) ? 255 - (256 * value / (v)) : 0); // A // COMMON
+            }
+        }
+
+        // make texture from byte array
+        texture.LoadRawTextureData(depthBitmapBuffer);
+        texture.Apply();
+
+        resultMat2 = avgMatReturn(texture, matBuffer2, ref sumCount2);
+
+        v = 5000;
+
+        for (int r = 0; r < f_DepthMapHeight; r += 1) //위에서 아래로
+        {
+            for (int c = 0; c < f_DepthMapWidth; c += 1)//오른쪽에서 왼쪽으로 
+            {
+
+                ushort value = rawdata[r * f_DepthMapWidth + c];
+                depthBitmapBuffer[(r * f_DepthMapWidth + c) * 4 + 1] =
+                    (byte)((3200 < value) && (value < 5000) ? 255 - (256 * value / (v)) : 0); // G // COMMON
+                depthBitmapBuffer[(r * f_DepthMapWidth + c) * 4 + 3] =
+                    (byte)((3200 < value) && (value < 5000) ? 255 - (256 * value / (v)) : 0); // A // COMMON
+            }
+        }
+
+        // make texture from byte array
+        texture.LoadRawTextureData(depthBitmapBuffer);
+        texture.Apply();
+
+        resultMat3 = avgMatReturn(texture, matBuffer3, ref sumCount3);
+
+        Mat totalMat = new Mat(texture.height, texture.width, CvType.CV_8UC1);
+        totalMat = Mat.zeros(texture.height, texture.width, CvType.CV_8UC1);
+
+        Core.add(totalMat, resultMat1, totalMat);//합영상 구하기. 
+        Core.add(totalMat, resultMat2, totalMat);//합영상 구하기. 
+        Core.add(totalMat, resultMat3, totalMat);//합영상 구하기. 
+
+        Utils.matToTexture2D(totalMat, texture);//원본 깊이값 영상 텍스쳐로 전환
+        texture.Apply();//텍스쳐 적용
+
+        Mat kernel = new Mat(7, 7, CvType.CV_8U, new Scalar(1));
+
+        Imgproc.threshold(convert8Mat, convert8Mat, 5, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+        Imgproc.threshold(totalMat, totalMat, 5, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+
+        Imgproc.erode(totalMat, totalMat, kernel);//병목
+        Imgproc.dilate(totalMat, totalMat, kernel);//팽창. 
+        Imgproc.dilate(totalMat, totalMat, kernel);//팽창. 
 
         List<Point> touchPoints = new List<Point>();
 
         Mat hierarchy = new Mat();
         List<MatOfPoint> contours = new List<MatOfPoint>();
         //RETR_EXTERNAL
-        //지금 컨버트했는데도 윤곽선 검출에서 오류난다....
-        Imgproc.findContours(resultMat, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+        Imgproc.findContours(totalMat, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
 
         for (int i = 0; i < contours.Count; i++)
         {
@@ -309,13 +388,13 @@ public class SimpleDepthView : MonoBehaviour
                 touchPoints.Add(footPoint);
             }
             Scalar color = new Scalar(255, 0, 0);
-            Imgproc.drawContours(resultMat, contours, i, color, 7);
+            Imgproc.drawContours(totalMat, contours, i, color, 7);
         }
 
         for (int i = 0; i < touchPoints.Count; i++)
         { // touch points
             Scalar color = new Scalar(255, 0, 0);
-            Imgproc.circle(resultMat, touchPoints[i], 50, color, 7);
+            Imgproc.circle(totalMat, touchPoints[i], 50, color, 7);
             int delta_x = (int)touchPoints[i].x;
             int delta_y = (int)touchPoints[i].y;
             OnParticleObjActive(delta_x, delta_y);
@@ -324,9 +403,9 @@ public class SimpleDepthView : MonoBehaviour
         //현재 활성화중인 ParticleObj의 lifeTime을 확인하기 위해!
         OnParticleObjTimeCheck();
 
-        Utils.matToTexture2D(resultMat, texture);//원본 깊이값 영상 텍스쳐로 전환
-        texture.Apply();//텍스쳐 적용
-
+        Utils.matToTexture2D(totalMat, subTexture);//원본 깊이값 영상 텍스쳐로 전환
+        subTexture.Apply();//텍스쳐 적용
+        
     }
 
 
